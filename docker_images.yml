@@ -1,0 +1,34 @@
+- hosts: docker
+  vars:
+    SCRIPT_DIR: /root/DockerScripts/centos6-ssh
+    IMAGE_NAME: centos6-ssh
+    KEY_NAME: /root/.ssh/id_rsa
+
+  remote_user: root  
+  tasks:
+    - name: Create Docker Scripts  Directory
+      file: path={{ SCRIPT_DIR }} state=directory
+
+    - name: Copy Files for docker build
+      copy: src=./Files/DockerScripts/centos6-ssh/{{ item }} dest={{ SCRIPT_DIR }}/{{ item }}
+      with_items:
+        - Dockerfile
+        - init.sh
+        - authorized_keys
+
+    - name: Delete SSH RSA Keys
+      file: path={{ item  }} state=absent
+      with_items:
+        - "{{ KEY_NAME }}"
+        - "{{ KEY_NAME }}.pub"
+
+    - name: Create SSH RSA Keys
+      shell: ssh-keygen -t rsa -f {{ KEY_NAME }} -q -N ""
+
+    - name: Add SSH RSA Keys into DockerImage
+      shell: cat  {{ KEY_NAME }}.pub >> {{ SCRIPT_DIR }}/authorized_keys
+
+    - name: Create Docker Image
+      docker_image:
+        path: "{{ SCRIPT_DIR }}"
+        name: "{{ IMAGE_NAME }}"
